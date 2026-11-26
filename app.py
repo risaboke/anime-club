@@ -79,6 +79,48 @@ def search_anime(title):
 
     return results
 
+def get_rating(anime):
+    """Returns the rating for sorting. A missing rating counts as 0"""
+    if anime ["rating"] is None:
+        return 0
+    return anime["rating"]
+
+def get_episodes(anime):
+    """This returns the episode count for sorting. A missing count counts as 0"""
+    if anime["episodes"] is None:
+        return 0
+    return anime["episodes"]
+
+def get_title(anime):
+    """This returns the lowercase title so A-Z sorting ignores capital letters"""
+    return anime["title"].lower()
+
+def filter_results(results, genre, status):
+    """Keep the anime that only matches the chosen genre and status"""
+    filtered = []
+    for anime in results:
+        if genre != "":
+            lowercase_genres = []
+            for g in anime["genres"]:
+                lowercase_genres.append(g.lower())
+            if genre.lower() not in lowercase_genres:
+                continue
+
+        if status != "" and anime["status"] != status:
+            continue
+        filtered.append(anime)
+    return filtered
+
+def sort_results(results, sort_by):
+    """Returns the list sorted by the chosen option"""
+    if sort_by == "rating":
+        return sorted(results, key=get_rating, reverse=True)
+    if sort_by == "episodes":
+        return sorted(results, key=get_episodes, reverse=True)
+    if sort_by == "title":
+        return sorted(results, key=get_title)
+    return results
+
 @app.route("/")
 def home():
     return "Anime Club is running"
@@ -86,14 +128,22 @@ def home():
 @app.route("/api/search")
 def search ():
     title = request.args.get("q", "").strip()
+    genre = request.args.get("genre", "").strip()
+    status = request.args.get("status", "").strip().lower()
+    sort_by = request.args.get("sort", "").strip().lower()
 
     if title == "":
         return jsonify({"error": "Type an anime title"}), 400
+    if sort_by not in ["", "rating", "episodes", "title"]:
+        return jsonify ({"error": "sort must be rating, episodes, or title"}), 400
     try:
         results = search_anime(title)
     except requests.exceptions.RequestException:
         return jsonify({"error": "Could not reach Kitsu. Please try again later."}), 503
-    
+
+    results = filter_results(results, genre, status)
+    results = sort_results(results, sort_by)
+
     return jsonify(results)
 
 if __name__ == "__main__":
