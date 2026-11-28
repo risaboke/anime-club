@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Anime Club</title>
+</head>
+<body>
+    <h1>Anime Club</h1>
+    <input type="text" id="search-box" placeholder="Search for an anime">
+    <button id="search-button">Search</button>
+    <p id="message"></p>
+    <div id="results"></div>
+    <script>
+        const searchBox = document.getElementById("search-box");
+        const searchButton = document.getElementById("search-button");
+        const message = document.getElementById("message");
+        const resultsDiv = document.getElementById("results");
+
+        async function searchAnime() {
+            const title = searchBox.value.trim();
+            if (title === "") {
+                message.textContent = "Please type an anime title";
+                return;
+            }
+            message.textContent = "Loading...";
+            resultsDiv.textContent = "";
+
+            const params = new URLSearchParams({ q: title,});
+
+            try {
+                const response = await fetch("/api/search?" + params.toString());
+                const data = await response.json();
+
+                if (!response.ok) {
+                    message.textContent = data.error;
+                    return;
+                }
+
+                if (data.length === 0) {
+                    message.textContent = "No anime found. Try another search.";
+                    return;
+                }
+
+                message.textContent = "Found " + data.length + " anime.";
+                for (const anime of data) {
+                    showAnime(anime);
+                }
+            } catch (error) {
+                message.textContent = "Something went wrong. Check your connection and try again.";
+            }
+        }
+
+        function showAnime(anime) {
+            const card = document.createElement("div");
+            const heading = document.createElement("h2");
+            heading.textContent = anime.title;
+            card.appendChild(heading);
+
+            if (anime.poster) {
+                const picture = document.createElement("img");
+                picture.src = anime.poster;
+                picture.alt = "Poster for " + anime.title;
+                card.appendChild(picture)
+            }
+
+            const rating = document.createElement("p");
+            if (anime.rating === null) {
+                rating.textContent = "Rating: no rating yet";
+            } else {
+                rating.textContent = "Rating: " + anime.rating + " /5";
+            }
+            card.appendChild(rating);
+
+            const episodes = document.createElement("p");
+            if (anime.episodes === null) {
+                episodes.textContent = "Episodes: unknown";
+            } else {
+                episodes.textContent = "Episodes: " + anime.episodes;
+            }
+            card.appendChild(episodes);
+
+            const status = document.createElement("p");
+            status.textContent = "Status: " + anime.status;
+            card.appendChild(status);
+
+            const genres = document.createElement("p");
+            genres.textContent = "Genres: " + anime.genres.join(", ");
+            card.appendChild(genres);
+
+            const watch = document.createElement("p");
+            if (anime.watch_links.length === 0) {
+                watch.textContent = "Where to watch: no legal link listed";
+            } else {
+                watch.textContent = "Where to watch: ";
+                for (const link of anime.watch_links) {
+                    if (link.url.startsWith("https://")) {
+                        const anchor = document.createElement("a");
+                        anchor.href = link.url;
+                        anchor.textContent = link.site + " ";
+                        anchor.target = "_blank";
+                        watch.appendChild(anchor)
+                    }
+                }
+            }
+            card.appendChild(watch)
+
+            resultsDiv.appendChild(card);
+        }
+
+        searchButton.addEventListener("click", searchAnime);
+        searchBox.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                searchAnime();
+            }
+        });
+    </script>
+</body>
+</html>

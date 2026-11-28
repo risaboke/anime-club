@@ -1,5 +1,5 @@
 import requests
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 
 app = Flask(__name__)
 
@@ -123,7 +123,7 @@ def sort_results(results, sort_by):
 
 @app.route("/")
 def home():
-    return "Anime Club is running"
+    return render_template("index.html")
 
 @app.route("/api/search")
 def search ():
