@@ -1,9 +1,25 @@
+import os
+import pymysql
 import requests
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request, render_template
+
+load_dotenv()
 
 app = Flask(__name__)
 
 KITSU_URL = "https://kitsu.app/api/edge/anime"
+VALID_STATUSES = ["want to watch", "watching", "finished"]
+
+def get_connection():
+    """Opens a connection to the MySQL database"""
+    return pymysql.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+        cursorclass=pymysql.cursors.DictCursor,
+    )
 
 def get_site_name(url):
     """Turns a streaming link into a simple site name"""
@@ -145,6 +161,86 @@ def search ():
     results = sort_results(results, sort_by)
 
     return jsonify(results)
+
+@app.route("/api/shelf", methods=["POST"])
+def add_to_shelf():
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "Send the data as JSON"}), 400
+
+    member_name = str(data.get("member_name") or "").strip()
+    anime_id = str(data.get("anime_id") or "").strip()
+    title = str(data.get("title") or "").strip()
+    poster = data.get("poster")
+    status = str(data.get("status") or "").strip().lower()
+    rating = data.get("rating")
+    opinion = str(data.get("opinion") or "").strip()
+
+    if member_name == "" or len(member_name) > 50:
+        return jsonify({"error": "Please enter your name (50 characters or fewer)"}), 400
+    if anime_id == "" or title == "":
+        return jsonify({"error": "Missing anime information"}), 400
+    if status not in VALID_STATUSES:
+        return jsonify({"error": "Status must be 'want to watch', 'watching', or 'finished'"}), 400
+    if rating is not None:
+        if not isinstance(rating, int) or rating < 1 or rating > 5:
+            return jsonify({"error": "Rating must be a whole number from 1 to 5"}), 400
+        if len(opinion) > 1000:
+            return jsonify({"error", "Opinion must be 1000 characters or fewer"}), 400
+        
+        try:
+            connection = get_connection()
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT id FROM shelf WHERE member_name = %s AND anime_id = %s",
+                        (member_name, anime_id),
+                    )
+                    existing = cursor.fetchone()
+
+                    if existing:
+                        cursor.execute(
+                            "UPDATE shelf SET status = %s, rating = %s, opinion = %s WHERE id = %s",
+                            (status, rating, opinion, existing["id"]),
+                        )
+                    else:
+                        cursor.execute(
+                            "INSERT INTO shelf (member_name, anime_id, title, poster, status, rating, opinion) "
+                            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                            (member_name, anime_id, title, poster, status, rating, opinion),
+                        )
+                connection.commit()
+            finally:
+                connection.close()
+        except pymysql.MySQLError as error:
+            print("Databse error:", error)
+            return jsonify({"error": "Could not reach the database. Please try again later"}), 503
+
+        return jsonify({"message": "Saved to your shelf"}), 201
+
+@app.route("/api/shelf")
+def get_shelf():
+    member_name = request.args.get("member", "").strip()
+    if member_name == "":
+        return jsonify({"error": "Plese enter your name"}), 400
+
+    try:
+        connection = get_connection()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT anime_id, title, poster, status, rating, opinion "
+                    "FROM shelf WHERE member_name = %s ORDER BY created_at DESC",
+                    (member_name,),
+                )
+                rows = cursor.fetchall()
+        finally:
+            connection.close()
+    except pymysql.MySQLError as error:
+        print("Database error:", error)
+        return jsonify({"error": "Could not reach the database. Please try again later"}), 503
+
+    return jsonify(rows)
 
 if __name__ == "__main__":
     app.run(debug=True)
