@@ -3,10 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <title>Anime Club</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f7;
+            color: #222;
+        }
+        h1 { text-align: center; }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        #results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+        }
+        .card img {
+            width: 100%;
+            border-radius: 6px;
+        }
+        .card h2 {
+            font-size: 1.1rem;
+        }
+    </style>
 </head>
 <body>
     <h1>Anime Club</h1>
-    <input type="text" id="search-box" placeholder="Search for an anime">
+    <div class="controls">
+        <input type="text" id="search-box" placeholder="Search for an anime">
     <select id ="sort-select">
         <option value="">No sorting</option>
         <option value="rating">Highest rating</option>
@@ -22,6 +58,7 @@
     </select>
     <input type="text" id="genre-box" placeholder="Genre, e.g. Drama">
     <button id="search-button">Search</button>
+    </div>
     <p id="message"></p>
     <div id="results"></div>
     <script>
@@ -74,6 +111,7 @@
 
         function showAnime(anime) {
             const card = document.createElement("div");
+            card.className = "card"
             const heading = document.createElement("h2");
             heading.textContent = anime.title;
             card.appendChild(heading);
