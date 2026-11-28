@@ -7,6 +7,20 @@
 <body>
     <h1>Anime Club</h1>
     <input type="text" id="search-box" placeholder="Search for an anime">
+    <select id ="sort-select">
+        <option value="">No sorting</option>
+        <option value="rating">Highest rating</option>
+        <option value="episodes">Most episodes</option>
+        <option value="title">Title A to Z</option>
+    </select>
+    <select id="status-select">
+        <option value="">Any status</option>
+        <option value="finished">Finished</option>
+        <option value="current">Airing now</option>
+        <option value="unreleased">Unreleased</option>
+
+    </select>
+    <input type="text" id="genre-box" placeholder="Genre, e.g. Drama">
     <button id="search-button">Search</button>
     <p id="message"></p>
     <div id="results"></div>
@@ -15,6 +29,9 @@
         const searchButton = document.getElementById("search-button");
         const message = document.getElementById("message");
         const resultsDiv = document.getElementById("results");
+        const sortSelect = document.getElementById("sort-select");
+        const statusSelect = document.getElementById("status-select");
+        const genreBox = document.getElementById("genre-box");
 
         async function searchAnime() {
             const title = searchBox.value.trim();
@@ -25,7 +42,12 @@
             message.textContent = "Loading...";
             resultsDiv.textContent = "";
 
-            const params = new URLSearchParams({ q: title,});
+            const params = new URLSearchParams({ 
+                q: title,
+                sort: sortSelect.value,
+                status: statusSelect.value,
+                genre: genreBox.value.trim(),
+            });
 
             try {
                 const response = await fetch("/api/search?" + params.toString());
